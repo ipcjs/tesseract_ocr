@@ -63,13 +63,101 @@ class _MyHomePageState extends State<MyHomePage> {
         buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
   }
 
-  void runFilePiker() async {
+  Future<File?> _downloadTrainedData(String lang) async {
+    HttpClient httpClient = HttpClient();
+    HttpClientRequest request = await httpClient.getUrl(Uri.parse(
+        'https://github.com/tesseract-ocr/tessdata/raw/main/$lang.traineddata'));
+    HttpClientResponse response = await request.close();
+    Uint8List bytes = await consolidateHttpClientResponseBytes(response);
+    String dir = await FlutterTesseractOcr.getTessdataPath();
+    print('$dir/$lang.traineddata');
+    File file = File('$dir/$lang.traineddata');
+    await file.writeAsBytes(bytes);
+    return file;
+  }
+
+  void _onUrlsButtonPressed() {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return SimpleDialog(
+            title: const Text('Select Url'),
+            children: tessImages
+                .map((key, value) {
+                  return MapEntry(
+                      key,
+                      SimpleDialogOption(
+                          onPressed: () {
+                            urlEditController.text = value;
+                            setState(() {});
+                            Navigator.pop(context);
+                          },
+                          child: Row(
+                            children: [
+                              Text(key),
+                              const Text(' : '),
+                              Flexible(child: Text(value)),
+                            ],
+                          )));
+                })
+                .values
+                .toList(),
+          );
+        });
+  }
+
+  void _onFilePickerPressed() async {
     // android && ios only
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       _ocr(pickedFile.path);
     }
+  }
+
+  ValueChanged<bool?>? _onLangCheckboxChanged(String lang) {
+    return (v) async {
+      // dynamic add Tessdata
+      if (!kIsWeb) {
+        Directory dir = Directory(await FlutterTesseractOcr.getTessdataPath());
+        if (!dir.existsSync()) {
+          dir.create();
+        }
+        bool isInstalled = false;
+        dir.listSync().forEach((element) {
+          String name = element.path.split('/').last;
+          // if (name == 'deu.traineddata') {
+          //   element.delete();
+          // }
+          isInstalled |= name == '$lang.traineddata';
+        });
+        if (!isInstalled) {
+          setState(() {
+            _downloadTessFile = true;
+          });
+          final file = await _downloadTrainedData(lang) //
+              .catchError((e) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('$e')));
+            return null;
+          }) //
+              .whenComplete(() => setState(() {
+                    _downloadTessFile = false;
+                  }));
+
+          if (file == null) {
+            return;
+          }
+        }
+        print(isInstalled);
+      }
+      if (!selectList.contains(lang)) {
+        selectList.add(lang);
+      } else {
+        selectList.remove(lang);
+      }
+      setState(() {});
+    };
   }
 
   void _ocr(url) async {
@@ -92,13 +180,13 @@ class _MyHomePageState extends State<MyHomePage> {
       await file.writeAsBytes(bytes);
       url = file.path;
     }
-    var langs = selectList.join('+');
+    final languages = selectList.join('+');
 
     _load = true;
     setState(() {});
 
     _ocrText =
-        await FlutterTesseractOcr.extractText(url, language: langs, args: {
+        await FlutterTesseractOcr.extractText(url, language: languages, args: {
       'preserve_interword_spaces': '1',
     });
     //  ========== Test performance  ==========
@@ -106,20 +194,22 @@ class _MyHomePageState extends State<MyHomePage> {
       DateTime before1 = DateTime.now();
       print('init : start');
       for (var i = 0; i < 10; i++) {
-        _ocrText =
-            await FlutterTesseractOcr.extractText(url, language: langs, args: {
-          'preserve_interword_spaces': '1',
-        });
+        _ocrText = await FlutterTesseractOcr.extractText(url,
+            language: languages,
+            args: {
+              'preserve_interword_spaces': '1',
+            });
       }
       DateTime after1 = DateTime.now();
       print('init : ${after1.difference(before1).inMilliseconds}');
     }
     // ========== Test performance  ==========
     if (false) {
-      _ocrHocr =
-          await FlutterTesseractOcr.extractHocr(url, language: langs, args: {
-        'preserve_interword_spaces': '1',
-      });
+      _ocrHocr = await FlutterTesseractOcr.extractHocr(url,
+          language: languages,
+          args: {
+            'preserve_interword_spaces': '1',
+          });
       print(_ocrText);
       print(_ocrText);
     }
@@ -155,37 +245,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     SizedBox(
                       child: ElevatedButton(
-                          onPressed: () {
-                            showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return SimpleDialog(
-                                    title: const Text('Select Url'),
-                                    children: tessImages
-                                        .map((key, value) {
-                                          return MapEntry(
-                                              key,
-                                              SimpleDialogOption(
-                                                  onPressed: () {
-                                                    urlEditController.text =
-                                                        value;
-                                                    setState(() {});
-                                                    Navigator.pop(context);
-                                                  },
-                                                  child: Row(
-                                                    children: [
-                                                      Text(key),
-                                                      const Text(' : '),
-                                                      Flexible(
-                                                          child: Text(value)),
-                                                    ],
-                                                  )));
-                                        })
-                                        .values
-                                        .toList(),
-                                  );
-                                });
-                          },
+                          onPressed: _onUrlsButtonPressed,
                           child: const Text('urls')),
                     ),
                     Expanded(
@@ -206,57 +266,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 Row(
                   children: [
-                    ...langList.map((e) {
+                    ...langList.map((lang) {
                       return Row(children: [
                         Checkbox(
-                            value: selectList.contains(e),
-                            onChanged: (v) async {
-                              // dynamic add Tessdata
-                              if (kIsWeb == false) {
-                                Directory dir = Directory(
-                                    await FlutterTesseractOcr
-                                        .getTessdataPath());
-                                if (!dir.existsSync()) {
-                                  dir.create();
-                                }
-                                bool isInstalled = false;
-                                dir.listSync().forEach((element) {
-                                  String name = element.path.split('/').last;
-                                  // if (name == 'deu.traineddata') {
-                                  //   element.delete();
-                                  // }
-                                  isInstalled |= name == '$e.traineddata';
-                                });
-                                if (!isInstalled) {
-                                  _downloadTessFile = true;
-                                  setState(() {});
-                                  HttpClient httpClient = HttpClient();
-                                  HttpClientRequest request =
-                                      await httpClient.getUrl(Uri.parse(
-                                          'https://github.com/tesseract-ocr/tessdata/raw/main/$e.traineddata'));
-                                  HttpClientResponse response =
-                                      await request.close();
-                                  Uint8List bytes =
-                                      await consolidateHttpClientResponseBytes(
-                                          response);
-                                  String dir = await FlutterTesseractOcr
-                                      .getTessdataPath();
-                                  print('$dir/$e.traineddata');
-                                  File file = File('$dir/$e.traineddata');
-                                  await file.writeAsBytes(bytes);
-                                  _downloadTessFile = false;
-                                  setState(() {});
-                                }
-                                print(isInstalled);
-                              }
-                              if (!selectList.contains(e)) {
-                                selectList.add(e);
-                              } else {
-                                selectList.remove(e);
-                              }
-                              setState(() {});
-                            }),
-                        Text(e)
+                          value: selectList.contains(lang),
+                          onChanged: _onLangCheckboxChanged(lang),
+                        ),
+                        Text(lang)
                       ]);
                     }).toList(),
                   ],
@@ -283,12 +299,19 @@ class _MyHomePageState extends State<MyHomePage> {
             color: Colors.black26,
             child: _downloadTessFile
                 ? Center(
-                    child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      CircularProgressIndicator(),
-                      Text('download Trained language files')
-                    ],
+                    child: Material(
+                    type: MaterialType.card,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          CircularProgressIndicator(),
+                          Text('download Trained language files')
+                        ],
+                      ),
+                    ),
                   ))
                 : const SizedBox(),
           )
@@ -298,10 +321,7 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: kIsWeb
           ? Container()
           : FloatingActionButton(
-              onPressed: () {
-                runFilePiker();
-                // _ocr("");
-              },
+              onPressed: _onFilePickerPressed,
               tooltip: 'OCR',
               child: const Icon(Icons.add),
             ), // This trailing comma makes auto-formatting nicer for build methods.
