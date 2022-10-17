@@ -2,6 +2,7 @@
   <dictionary name="Project">
     <words>
       <w>hocr</w>
+      <w>tessdata</w>
       <w>tesseract</w>
       <w>traineddata</w>
     </words>

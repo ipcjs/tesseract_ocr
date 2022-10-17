@@ -67,6 +67,9 @@ class _MyHomePageState extends State<MyHomePage> {
     'eng',
     'deu',
     'chi_sim',
+    'eng_old',
+    'eng_best',
+    'eng_fast',
     ..._localLangList,
   };
   var selectList = ['eng', 'kor'];
@@ -85,13 +88,25 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<File?> _downloadTrainedData(String lang) async {
+    String repoSuffix = '';
+    String langInRepo = lang;
+    final lastIndex = lang.lastIndexOf('_');
+    if (lastIndex != -1) {
+      final suffix = lang.substring(lastIndex + 1);
+      if (const ['fast', 'best', 'old'].contains(suffix)) {
+        repoSuffix = suffix == 'old' ? '' : '_$suffix';
+        langInRepo = lang.substring(0, lastIndex);
+      }
+    }
+
     HttpClient httpClient = HttpClient();
-    HttpClientRequest request = await httpClient.getUrl(Uri.parse(
-        'https://github.com/tesseract-ocr/tessdata/raw/main/$lang.traineddata'));
+    final url =
+        'https://github.com/tesseract-ocr/tessdata$repoSuffix/raw/main/$langInRepo.traineddata';
+    HttpClientRequest request = await httpClient.getUrl(Uri.parse(url));
     HttpClientResponse response = await request.close();
     Uint8List bytes = await consolidateHttpClientResponseBytes(response);
     String dir = await FlutterTesseractOcr.getTessdataPath();
-    print('$dir/$lang.traineddata');
+    print('$url => $dir/$lang.traineddata');
     File file = File('$dir/$lang.traineddata');
     await file.writeAsBytes(bytes);
     return file;
@@ -138,7 +153,7 @@ class _MyHomePageState extends State<MyHomePage> {
   ValueChanged<bool?>? _onLangCheckboxChanged(String lang) {
     return (v) async {
       // dynamic add Tessdata
-      if (!kIsWeb) {
+      if (!kIsWeb && !_localLangList.contains(lang)) {
         Directory dir = Directory(await FlutterTesseractOcr.getTessdataPath());
         if (!dir.existsSync()) {
           dir.create();
