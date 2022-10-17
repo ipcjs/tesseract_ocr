@@ -51,15 +51,18 @@ public class FlutterTesseractOcrPlugin implements FlutterPlugin, MethodCallHandl
         final String tessDataPath = call.argument("tessData");
         final String imagePath = call.argument("imagePath");
         final Map<String, String> args = call.argument("args");
-        String DEFAULT_LANGUAGE = "eng";
+        String language = "eng";
         if (call.argument("language") != null) {
-          DEFAULT_LANGUAGE = call.argument("language");
+          language = call.argument("language");
         }
         final String[] recognizedText = new String[1];
-        if(baseApi == null || !lastLanguage.equals(DEFAULT_LANGUAGE)){
+        if (baseApi == null || !lastLanguage.equals(language)) {
+          if (baseApi != null) {
+            baseApi.recycle();
+          }
           baseApi = new TessBaseAPI();
-          baseApi.init(tessDataPath, DEFAULT_LANGUAGE);
-          lastLanguage = DEFAULT_LANGUAGE;
+          baseApi.init(tessDataPath, language);
+          lastLanguage = language;
         }
 
         int psm = DEFAULT_PAGE_SEG_MODE;
@@ -111,7 +114,6 @@ class MyRunnable implements Runnable {
         recognizedText[0] = this.baseApi.getUTF8Text();
       }
       this.baseApi.stop();
-      // this.baseApi.recycle();
     } catch (Exception e) {}
     this.sendSuccess(recognizedText[0]);
   }
