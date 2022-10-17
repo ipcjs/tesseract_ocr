@@ -1,14 +1,29 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 
-void main() {
+late List<String> _localLangList;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  var config = jsonDecode(
+      await rootBundle.loadString(FlutterTesseractOcr.TESS_DATA_CONFIG));
+  final files = (config['files'] as List<dynamic>).cast<String>();
+  _localLangList = files
+      .where((file) => path.extension(file) == '.traineddata')
+      .map((file) => path.withoutExtension(file))
+      .toList();
+
   runApp(const MyApp());
 }
 
@@ -47,7 +62,13 @@ class _MyHomePageState extends State<MyHomePage> {
     'ch_sim': 'https://tesseract.projectnaptha.com/img/chi_sim.png',
     'ru': 'https://tesseract.projectnaptha.com/img/rus.png',
   };
-  static const langList = ['kor', 'eng', 'deu', 'chi_sim'];
+  static final langList = {
+    'kor',
+    'eng',
+    'deu',
+    'chi_sim',
+    ..._localLangList,
+  };
   var selectList = ['eng', 'kor'];
   String path = '';
   bool _load = false;
@@ -106,10 +127,9 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  void _onFilePickerPressed() async {
+  void _onFilePickerPressed(ImageSource source) async {
     // android && ios only
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile = await ImagePicker().pickImage(source: source);
     if (pickedFile != null) {
       _ocr(pickedFile.path);
     }
@@ -264,16 +284,19 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: const Text('Run')),
                   ],
                 ),
-                Row(
+                Wrap(
                   children: [
                     ...langList.map((lang) {
-                      return Row(children: [
-                        Checkbox(
-                          value: selectList.contains(lang),
-                          onChanged: _onLangCheckboxChanged(lang),
-                        ),
-                        Text(lang)
-                      ]);
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Checkbox(
+                            value: selectList.contains(lang),
+                            onChanged: _onLangCheckboxChanged(lang),
+                          ),
+                          Text(lang)
+                        ],
+                      );
                     }).toList(),
                   ],
                 ),
@@ -320,10 +343,22 @@ class _MyHomePageState extends State<MyHomePage> {
 
       floatingActionButton: kIsWeb
           ? Container()
-          : FloatingActionButton(
-              onPressed: _onFilePickerPressed,
-              tooltip: 'OCR',
-              child: const Icon(Icons.add),
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  backgroundColor: Colors.yellow,
+                  onPressed: () => _onFilePickerPressed(ImageSource.camera),
+                  tooltip: 'OCR',
+                  child: const Icon(Icons.camera_alt),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  onPressed: () => _onFilePickerPressed(ImageSource.gallery),
+                  tooltip: 'OCR',
+                  child: const Icon(Icons.photo_album),
+                ),
+              ],
             ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
