@@ -220,10 +220,33 @@ class _MyHomePageState extends State<MyHomePage> {
     _load = true;
     setState(() {});
 
-    _ocrText =
-        await FlutterTesseractOcr.extractText(url, language: languages, args: {
-      'preserve_interword_spaces': '1',
-    });
+    if (false) {
+      // recognition SIM card number
+      final configs = {
+        'load_system_dawg': 'F',
+        'load_freq_dawg': 'F',
+        'tessedit_char_whitelist': '0123456789N',
+      };
+      _ocrText = '';
+      for (final psm in [4, 6, 11]) {
+        final text = await FlutterTesseractOcr.extractText(url,
+            language: languages,
+            args: {
+              ...configs,
+              'psm': psm.toString(),
+            });
+        _ocrText += '\n'
+            '\n'
+            '## psm: $psm\n'
+            '$text';
+      }
+    } else {
+      _ocrText = await FlutterTesseractOcr.extractText(url,
+          language: languages,
+          args: {
+            'preserve_interword_spaces': '1',
+          });
+    }
     //  ========== Test performance  ==========
     if (false) {
       DateTime before1 = DateTime.now();

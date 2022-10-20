@@ -1,5 +1,7 @@
 # Tesseract OCR for Flutter
 
+**DEPRECATED! Lack of maintenance on the iOS platform, use [google_mlkit_text_recognition](https://pub.dev/packages/google_mlkit_text_recognition) instead.** 
+
 Tesseract OCR 4.0 for flutter
 This plugin is based on <a href="https://github.com/tesseract-ocr/tesseract">Tesseract OCR 4</a>
 This plugin uses <a href="https://github.com/adaptech-cz/Tesseract4Android/"> Tesseract4Android </a> and <a href="https://github.com/SwiftyTesseract/SwiftyTesseract">SwiftyTesseract</a>.
