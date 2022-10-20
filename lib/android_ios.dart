@@ -19,17 +19,26 @@ class FlutterTesseractOcr {
   /// String _ocrText = await FlutterTesseractOcr.extractText(url, language: langs, args: {
   ///    "preserve_interword_spaces": "1",});
   ///```
-  static Future<String> extractText(String imagePath,
-      {String? language, Map? args}) async {
+  static Future<String> extractText(
+    String imagePath, {
+    String? language,
+    Map<String, String>? args,
+    int? psm,
+    int? oem,
+  }) async {
     assert(await File(imagePath).exists(), true);
     final String tessData = await _loadTessData();
-    final String extractText =
-        await _channel.invokeMethod('extractText', <String, dynamic>{
-      'imagePath': imagePath,
-      'tessData': tessData,
-      'language': language,
-      'args': args,
-    });
+    final String extractText = await _channel.invokeMethod(
+      'extractText',
+      <String, dynamic>{
+        'imagePath': imagePath,
+        'tessData': tessData,
+        'language': language,
+        'args': args,
+        'psm': psm,
+        'oem': oem,
+      },
+    );
     return extractText;
   }
 
@@ -38,17 +47,26 @@ class FlutterTesseractOcr {
   /// String _ocrHocr = await FlutterTesseractOcr.extractText(url, language: langs, args: {
   ///    "preserve_interword_spaces": "1",});
   ///```
-  static Future<String> extractHocr(String imagePath,
-      {String? language, Map? args}) async {
+  static Future<String> extractHocr(
+    String imagePath, {
+    String? language,
+    Map<String, String>? args,
+    int? psm,
+    int? oem,
+  }) async {
     assert(await File(imagePath).exists(), true);
     final String tessData = await _loadTessData();
-    final String extractText =
-        await _channel.invokeMethod('extractHocr', <String, dynamic>{
-      'imagePath': imagePath,
-      'tessData': tessData,
-      'language': language,
-      'args': args,
-    });
+    final String extractText = await _channel.invokeMethod(
+      'extractHocr',
+      <String, dynamic>{
+        'imagePath': imagePath,
+        'tessData': tessData,
+        'language': language,
+        'args': args,
+        'psm': psm,
+        'oem': oem,
+      },
+    );
     return extractText;
   }
 
