@@ -4,7 +4,7 @@ version '1.0'
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 
     dependencies {
@@ -18,7 +18,7 @@ rootProject.allprojects {
         flatDir {
            dirs project(':flutter_tesseract_ocr').file('libs')
         }
-        
+        maven { url 'https://jitpack.io' }
     }
 }
 
@@ -29,7 +29,7 @@ android {
     
      
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 18
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
     }
@@ -48,5 +48,6 @@ android {
 //     }
 // }
 dependencies {
-    api(name: 'tesseract4android-release', ext: 'aar')
+    // api(name: 'tesseract4android-release', ext: 'aar')
+    implementation 'cz.adaptech:tesseract4android:4.1.1'
 }
